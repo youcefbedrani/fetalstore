@@ -99,17 +99,16 @@ const monitoredPOST = withPerformanceMonitoring(async (request: NextRequest) => 
       }
     });
 
-    } catch (error) {
-      console.error('Unexpected error in order creation:', error);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Internal server error',
-          message: 'An unexpected error occurred'
-        },
-        { status: 500 }
-      );
-    }
+  } catch (error) {
+    console.error('Unexpected error in order creation:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        message: 'An unexpected error occurred'
+      },
+      { status: 500 }
+    );
   }
 });
 
