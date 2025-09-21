@@ -15,7 +15,7 @@ interface OrderData {
   quantity: number
   total_price: number
   product_image: string
-  image_url?: string
+  image_url: string | null
   created_at: string
 }
 
@@ -185,8 +185,8 @@ export default function ThankYouPage({ orderData, onNewOrder }: ThankYouPageProp
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">للاستفسارات</h3>
                 <div className="space-y-2 text-gray-700">
-                  <p>📞 +213 555 123 456</p>
-                  <p>📧 info@ultrasound-orb.dz</p>
+                  <p>📞 0676896524</p>
+                  <p>📧 bidayagift.help@gmail.com</p>
                   <p>🕒 9:00 ص - 6:00 م (السبت - الخميس)</p>
                 </div>
               </div>

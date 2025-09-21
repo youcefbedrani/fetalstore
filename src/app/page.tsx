@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { supabase } from '@/lib/supabase'
+// import { supabase } from '@/lib/supabase' // Using API route instead
 import { uploadImageToCloudinary, getOptimizedImageUrl as getOptimizedImageUrlLocal } from '@/lib/cloudinary'
-import { sendToGoogleSheetsEnhanced } from '@/lib/googleSheets'
+import { uploadImageToCloudinaryServer } from '@/lib/cloudinaryServer'
+import { sendToGoogleSheetsEnhanced } from '@/lib/googleSheetsWebhook'
 import '@/lib/testGoogleSheets' // Load test function
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -81,7 +82,7 @@ export default function Home() {
     quantity: number
     total_price: number
     product_image: string
-    image_url: string
+    image_url: string | null
     created_at: string
   } | null>(null)
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({})
@@ -93,6 +94,7 @@ export default function Home() {
   const [showCamera, setShowCamera] = useState(false)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [hasStartedForm, setHasStartedForm] = useState(false)
 
   // Scroll to top when thank you page is shown
   useEffect(() => {
@@ -359,6 +361,11 @@ export default function Home() {
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }))
     
+    // Mark that user has started filling the form
+    if (!hasStartedForm) {
+      setHasStartedForm(true)
+    }
+    
     if (errors[name as keyof FormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }))
     }
@@ -366,6 +373,11 @@ export default function Home() {
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
+    
+    // Mark that user has started filling the form
+    if (!hasStartedForm) {
+      setHasStartedForm(true)
+    }
     
     if (!file) {
       setFormData(prev => ({ ...prev, image: null }))
@@ -412,8 +424,8 @@ export default function Home() {
     
     if (!formData.phone.trim()) {
       newErrors.phone = 'رقم الهاتف مطلوب'
-    } else if (!/^[0-9]{10}$/.test(formData.phone.trim())) {
-      newErrors.phone = 'رقم الهاتف يجب أن يكون 10 أرقام فقط'
+    } else if (!/^[0-9+\-\s]{8,20}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'رقم الهاتف غير صحيح'
     }
     
     if (!formData.wilaya) {
@@ -432,9 +444,10 @@ export default function Home() {
       newErrors.childName = 'اسم الطفل مطلوب'
     }
     
-    if (!formData.image) {
-      newErrors.image = 'يرجى رفع صورة الموجات فوق الصوتية'
-    }
+    // Image is now optional - orders can be submitted without image
+    // if (!formData.image) {
+    //   newErrors.image = 'يرجى رفع صورة الموجات فوق الصوتية'
+    // }
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -442,20 +455,36 @@ export default function Home() {
 
   const uploadImageToCloudinaryService = async (file: File): Promise<string> => {
     try {
-      const cloudinaryUrl = await uploadImageToCloudinary(file)
-      return cloudinaryUrl
+      // Try client-side upload first
+      try {
+        const cloudinaryUrl = await uploadImageToCloudinary(file)
+        return cloudinaryUrl
+      } catch (clientError) {
+        console.warn('Client-side upload failed, trying server-side')
+        
+        // Fallback to server-side upload
+        const cloudinaryUrl = await uploadImageToCloudinaryServer(file)
+        return cloudinaryUrl
+      }
     } catch (error) {
+      console.error('Image upload error:', error)
       throw new Error(`خطأ في رفع الصورة: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`)
     }
   }
+
 
 
   // submitToGoogleSheets function removed - using sendToGoogleSheetsEnhanced instead
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Form submission started...')
     
-    if (!validateForm()) {
+    const isValid = validateForm()
+    console.log('Form validation result:', isValid)
+    
+    if (!isValid) {
+      console.log('Form validation failed, stopping submission')
       return
     }
     
@@ -463,9 +492,23 @@ export default function Home() {
     setIsUploadingImage(true)
     
     try {
-      // Upload image to Cloudinary with loading state
-      const cloudinaryUrl = await uploadImageToCloudinaryService(formData.image!)
-      const optimizedImageUrl = getOptimizedImageUrlLocal(cloudinaryUrl, 400, 400)
+      // Try to upload image to Cloudinary, but don't fail the order if it fails
+      let cloudinaryUrl = ''
+      let optimizedImageUrl = ''
+      
+      if (formData.image) {
+        try {
+          console.log('Uploading image...')
+          cloudinaryUrl = await uploadImageToCloudinaryService(formData.image)
+          optimizedImageUrl = getOptimizedImageUrlLocal(cloudinaryUrl, 400, 400)
+          console.log('✅ Image uploaded successfully')
+        } catch (imageError) {
+          console.warn('⚠️ Image upload failed, but continuing with order:', imageError)
+          // Continue without image - don't fail the entire order
+          cloudinaryUrl = ''
+          optimizedImageUrl = ''
+        }
+      }
       
       const orderData = {
         name: formData.name,
@@ -479,22 +522,45 @@ export default function Home() {
         total_price: getQuantityPrice(formData.quantity),
         product_name: 'كرة الموجات فوق الصوتية',
         product_image: `/${selectedExample}.png`,
-        image_path: cloudinaryUrl,
-        image_url: optimizedImageUrl,
+        image_path: cloudinaryUrl || null,
+        image_url: optimizedImageUrl || null,
         status: formData.cod ? 'pending_cod' : 'pending',
         created_at: new Date().toISOString()
       }
       
-      if (!supabase) {
-        throw new Error('يرجى تكوين متغيرات البيئة لـ Supabase أولاً')
-      }
+      // Submit order to API route instead of direct Supabase
+      console.log('Submitting order to API...', orderData)
       
-      const { error: dbError } = await supabase
-        .from('orders')
-        .insert([orderData])
-      
-      if (dbError) {
-        throw new Error(`خطأ في قاعدة البيانات: ${dbError.message}`)
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(orderData),
+        })
+        
+        console.log('API response status:', response.status, response.statusText)
+        
+        const result = await response.json()
+        console.log('API response data:', result)
+        
+        if (!response.ok) {
+          const errorMessage = result.message || `خطأ في إرسال الطلب: ${response.statusText}`
+          if (result.details && Array.isArray(result.details)) {
+            throw new Error(`${errorMessage}\nالتفاصيل: ${result.details.join(', ')}`)
+          }
+          throw new Error(errorMessage)
+        }
+        
+        if (!result.success) {
+          throw new Error(result.message || 'فشل في إرسال الطلب')
+        }
+        
+        console.log('✅ Order submitted successfully to Supabase:', result.order)
+      } catch (apiError) {
+        console.error('API submission error:', apiError)
+        throw new Error(`خطأ في إرسال الطلب: ${apiError instanceof Error ? apiError.message : 'خطأ غير معروف'}`)
       }
       
       const sheetsData = {
@@ -506,11 +572,12 @@ export default function Home() {
         address: formData.address,
         quantity: formData.quantity,
         total_price: getQuantityPrice(formData.quantity),
-        image_url: optimizedImageUrl,
+        image_url: optimizedImageUrl || 'لم يتم رفع صورة',
         created_at: orderData.created_at
       }
       
       // Try to send to Google Sheets (optional - won't fail the order if it fails)
+      console.log('Attempting to send data to Google Sheets...', sheetsData)
       try {
         const sheetsSuccess = await sendToGoogleSheetsEnhanced(sheetsData)
         if (sheetsSuccess) {
@@ -532,9 +599,17 @@ export default function Home() {
         quantity: formData.quantity,
         total_price: getQuantityPrice(formData.quantity),
         product_image: `/${selectedExample}.png`,
-        image_url: optimizedImageUrl,
+        image_url: optimizedImageUrl || null,
         created_at: orderData.created_at
       })
+      
+      // Show success message
+      if (cloudinaryUrl) {
+        console.log('✅ Order submitted successfully with image')
+      } else {
+        console.log('✅ Order submitted successfully without image (upload failed)')
+      }
+      
       setShowSuccess(true)
       
     } catch (error) {
@@ -554,6 +629,7 @@ export default function Home() {
         onNewOrder={() => {
           setShowSuccess(false)
           setOrderData(null)
+          setHasStartedForm(false)
           setFormData({
             name: '',
             phone: '',
@@ -574,14 +650,14 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-white" dir="rtl">
       <Navbar />
 
-      {/* Special Offer Banner */}
-      <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white py-3 px-4 text-center">
+      {/* Home Section - Special Offer Banner */}
+      <section id="home" className="bg-gradient-to-r from-pink-500 to-red-500 text-white py-3 px-4 text-center">
         <div className="max-w-7xl mx-auto">
           <p className="text-sm sm:text-base font-bold">
             🎉 عرض خاص و محدود ! خصم 27% + توصيل مجاني - وفر 2,000 دج الآن! 🎉
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Product Section */}
       <section id="product" className="py-12 sm:py-16">
@@ -809,7 +885,13 @@ export default function Home() {
                   {[1, 2, 3].map((qty) => (
                     <button
                       key={qty}
-                      onClick={() => setFormData(prev => ({ ...prev, quantity: qty }))}
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, quantity: qty }))
+                        // Mark that user has started filling the form
+                        if (!hasStartedForm) {
+                          setHasStartedForm(true)
+                        }
+                      }}
                       className={`p-3 sm:p-4 border-2 rounded-lg text-center transition-all ${
                         formData.quantity === qty
                           ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-200'
@@ -1150,10 +1232,12 @@ export default function Home() {
                   </div>
                 </div>
 
+
                 {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
+                  onClick={() => console.log('Submit button clicked!')}
                   className="w-full bg-pink-500 hover:bg-pink-600 disabled:bg-pink-300 text-white font-semibold py-3 sm:py-4 px-4 sm:px-6 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-black"
                 >
                   {isSubmitting ? (
@@ -1642,15 +1726,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Fixed Buy Button */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-80">
-        <button
-          onClick={() => document.getElementById('product')?.scrollIntoView({ behavior: 'smooth' })}
-          className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 sm:py-4 px-4 sm:px-6 rounded-lg shadow-lg transition-all transform hover:scale-105 text-sm sm:text-black"
-        >
-          اشتري الآن - {(getQuantityPrice(1) + deliveryPrice).toLocaleString()} دج
-        </button>
-      </div>
 
       <Footer />
 
@@ -1773,33 +1848,35 @@ export default function Home() {
         </div>
       )}
 
-      {/* Fixed Order Button */}
-      <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-80">
-        <button
-          onClick={() => {
-            // Scroll to order form section
-            document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' })
-            // Focus on name field after a short delay
-            setTimeout(() => {
-              const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement
-              if (nameInput) {
-                nameInput.focus()
-              }
-            }, 500)
-          }}
-          className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-4 px-6 rounded-lg shadow-2xl transition-all transform hover:scale-105 text-lg"
-        >
-          <div className="flex items-center justify-center gap-2">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span> حوّل الصورة لذكرى خالدة </span>
-          </div>
-          <div className="text-sm opacity-90 mt-1">
-            خصم 27% + توصيل مجاني
-          </div>
-        </button>
-      </div>
+      {/* Fixed Order Button - Only show when form is empty or not submitted */}
+      {!showSuccess && !isSubmitting && !hasStartedForm && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-80">
+          <button
+            onClick={() => {
+              // Scroll to order form section
+              document.getElementById('order-form')?.scrollIntoView({ behavior: 'smooth' })
+              // Focus on name field after a short delay
+              setTimeout(() => {
+                const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement
+                if (nameInput) {
+                  nameInput.focus()
+                }
+              }, 500)
+            }}
+            className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-bold py-4 px-6 rounded-lg shadow-2xl transition-all transform hover:scale-105 text-lg"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span> حوّل الصورة لذكرى خالدة </span>
+            </div>
+            <div className="text-sm opacity-90 mt-1">
+              خصم 27% + توصيل مجاني
+            </div>
+          </button>
+        </div>
+      )}
 
     </div>
   )

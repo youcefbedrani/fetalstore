@@ -1,12 +1,44 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState('home')
 
   const closeMenu = () => setIsMenuOpen(false)
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId)
+    if (element) {
+      element.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      })
+    }
+    closeMenu()
+  }
+
+  // Track active section based on scroll position
+  useEffect(() => {
+    const sections = ['home', 'product', 'features', 'testimonials', 'faq', 'contact']
+    
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 100 // Offset for navbar height
+      
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const section = document.getElementById(sections[i])
+        if (section && section.offsetTop <= scrollPosition) {
+          setActiveSection(sections[i])
+          break
+        }
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50" dir="rtl">
@@ -29,12 +61,66 @@ export default function Navbar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8 space-x-reverse">
-            <a href="#home" className="text-gray-700 hover:text-pink-500 transition-colors">الرئيسية</a>
-            <a href="#product" className="text-gray-700 hover:text-pink-500 transition-colors">المنتج</a>
-            <a href="#features" className="text-gray-700 hover:text-pink-500 transition-colors">المميزات</a>
-            <a href="#testimonials" className="text-gray-700 hover:text-pink-500 transition-colors">آراء العملاء</a>
-            <a href="#faq" className="text-gray-700 hover:text-pink-500 transition-colors">الأسئلة الشائعة</a>
-            <a href="#contact" className="text-gray-700 hover:text-pink-500 transition-colors">اتصل بنا</a>
+            <button 
+              onClick={() => scrollToSection('home')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'home' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              الرئيسية
+            </button>
+            <button 
+              onClick={() => scrollToSection('product')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'product' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              المنتج
+            </button>
+            <button 
+              onClick={() => scrollToSection('features')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'features' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              المميزات
+            </button>
+            <button 
+              onClick={() => scrollToSection('testimonials')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'testimonials' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              آراء العملاء
+            </button>
+            <button 
+              onClick={() => scrollToSection('faq')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'faq' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              الأسئلة الشائعة
+            </button>
+            <button 
+              onClick={() => scrollToSection('contact')} 
+              className={`transition-colors cursor-pointer ${
+                activeSection === 'contact' 
+                  ? 'text-pink-500 font-semibold' 
+                  : 'text-gray-700 hover:text-pink-500'
+              }`}
+            >
+              اتصل بنا
+            </button>
           </div>
 
           {/* Mobile menu button */}
@@ -59,48 +145,66 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t shadow-lg">
-              <a 
-                href="#home" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              <button 
+                onClick={() => scrollToSection('home')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'home' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 الرئيسية
-              </a>
-              <a 
-                href="#product" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              </button>
+              <button 
+                onClick={() => scrollToSection('product')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'product' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 المنتج
-              </a>
-              <a 
-                href="#features" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              </button>
+              <button 
+                onClick={() => scrollToSection('features')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'features' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 المميزات
-              </a>
-              <a 
-                href="#testimonials" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              </button>
+              <button 
+                onClick={() => scrollToSection('testimonials')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'testimonials' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 آراء العملاء
-              </a>
-              <a 
-                href="#faq" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              </button>
+              <button 
+                onClick={() => scrollToSection('faq')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'faq' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 الأسئلة الشائعة
-              </a>
-              <a 
-                href="#contact" 
-                className="block px-3 py-3 text-gray-700 hover:text-pink-500 hover:bg-pink-50 rounded-lg transition-colors"
-                onClick={closeMenu}
+              </button>
+              <button 
+                onClick={() => scrollToSection('contact')} 
+                className={`block w-full text-right px-3 py-3 rounded-lg transition-colors ${
+                  activeSection === 'contact' 
+                    ? 'text-pink-500 bg-pink-50 font-semibold' 
+                    : 'text-gray-700 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 اتصل بنا
-              </a>
+              </button>
             </div>
           </div>
         )}

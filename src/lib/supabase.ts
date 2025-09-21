@@ -5,19 +5,27 @@ let supabaseInstance: SupabaseClient | null = null
 export const getSupabaseClient = (): SupabaseClient | null => {
   if (!supabaseInstance) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    // Use anon key for now (service role key needs to be configured properly)
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     
     // Only create client if we have valid environment variables
-    if (supabaseUrl && supabaseAnonKey && 
+    if (supabaseUrl && supabaseKey && 
         supabaseUrl !== 'your_supabase_url_here' && 
-        supabaseAnonKey !== 'your_supabase_anon_key_here' &&
+        supabaseKey !== 'your_supabase_anon_key_here' &&
         supabaseUrl.startsWith('http')) {
       try {
-        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+        supabaseInstance = createClient(supabaseUrl, supabaseKey)
+        console.log('Supabase client created with anon key')
       } catch (error) {
         console.warn('Failed to create Supabase client:', error)
         return null
       }
+    } else {
+      console.warn('Missing Supabase configuration:', {
+        url: supabaseUrl,
+        hasKey: !!supabaseKey,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      })
     }
   }
   

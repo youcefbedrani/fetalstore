@@ -8,14 +8,14 @@ export interface OrderData {
   address: string
   quantity: number
   total_price: number
-  image_url?: string
+  image_url: string | null
   created_at: string
 }
 
 export async function sendToGoogleSheets(orderData: OrderData): Promise<boolean> {
   try {
-    // Your Google Sheets webhook URL
-    const webhookUrl = 'https://script.google.com/macros/s/AKfycbxz4Q1em-x2q7FHdDSX_2o9bgQPF35hNRRxxsm3gHfcHswewi9g3WzMevLnft0yLeG7/exec?gid=0'
+    // Get Google Sheets webhook URL from environment
+    const webhookUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_WEBHOOK || 'https://script.google.com/macros/s/AKfycbxz4Q1em-x2q7FHdDSX_2o9bgQPF35hNRRxxsm3gHfcHswewi9g3WzMevLnft0yLeG7/exec?gid=0'
     
     // Prepare data for Google Sheets (as form data - Google Apps Script prefers this)
     const formData = new FormData()
@@ -51,13 +51,24 @@ export async function sendToGoogleSheets(orderData: OrderData): Promise<boolean>
       body: formData
     })
 
+    console.log('Google Sheets response status:', response.status, response.statusText)
+    console.log('Google Sheets response headers:', Object.fromEntries(response.headers.entries()))
+
     if (!response.ok) {
-      console.error('Failed to send data to Google Sheets:', response.statusText)
+      const errorText = await response.text()
+      console.error('Failed to send data to Google Sheets:', response.statusText, errorText)
       return false
     }
 
     const result = await response.text()
     console.log('Data sent to Google Sheets successfully:', result)
+    
+    // Check if the response contains an error
+    if (result.includes('Moved Temporarily') || result.includes('GSE Default Error')) {
+      console.error('Google Apps Script deployment issue detected')
+      return false
+    }
+    
     return true
 
   } catch (error) {
@@ -69,7 +80,7 @@ export async function sendToGoogleSheets(orderData: OrderData): Promise<boolean>
 // Alternative method using URL parameters (GET request)
 export async function sendToGoogleSheetsViaURL(orderData: OrderData): Promise<boolean> {
   try {
-    const webhookUrl = 'https://script.google.com/macros/s/AKfycbxz4Q1em-x2q7FHdDSX_2o9bgQPF35hNRRxxsm3gHfcHswewi9g3WzMevLnft0yLeG7/exec'
+    const webhookUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_WEBHOOK?.replace('?gid=0', '') || 'https://script.google.com/macros/s/AKfycbxz4Q1em-x2q7FHdDSX_2o9bgQPF35hNRRxxsm3gHfcHswewi9g3WzMevLnft0yLeG7/exec'
     
     // Prepare URL with parameters
     const params = new URLSearchParams({
@@ -91,11 +102,12 @@ export async function sendToGoogleSheetsViaURL(orderData: OrderData): Promise<bo
     console.log('Sending data to Google Sheets via URL:', fullUrl)
 
     // Send to Google Sheets webhook using GET request
-    await fetch(fullUrl, {
+    const response = await fetch(fullUrl, {
       method: 'GET',
       mode: 'no-cors' // This is important for Google Apps Script
     })
 
+    console.log('Google Sheets URL method response status:', response.status, response.statusText)
     console.log('Data sent to Google Sheets via URL successfully')
     return true
 

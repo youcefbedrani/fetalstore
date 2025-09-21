@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
-import { getClientInfo, checkIPRateLimit } from '@/lib/ip-tracking';
-import { blockIPWithCloudflare } from '@/lib/cloudflare';
+import { getClientInfo } from '@/lib/ip-tracking';
+// import { checkIPRateLimit } from '@/lib/ip-tracking';
+// import { blockIPWithCloudflare } from '@/lib/cloudflare';
 import Joi from 'joi';
 
 // Order validation schema
 const orderSchema = Joi.object({
   name: Joi.string().min(2).max(255).required(),
-  phone: Joi.string().pattern(/^\+?[1-9]\d{1,14}$/).required(),
-  wilaya: Joi.string().length(2).required(),
+  phone: Joi.string().min(8).max(20).required(),
+  wilaya: Joi.string().min(1).max(10).required(),
   baladia: Joi.string().min(2).max(100).required(),
-  address: Joi.string().min(10).max(500).required(),
+  address: Joi.string().min(5).max(500).required(),
   child_name: Joi.string().min(2).max(255).required(),
   cod: Joi.boolean().default(true),
   quantity: Joi.number().integer().min(1).max(10).default(1),
+  total_price: Joi.number().positive().optional(),
   product_name: Joi.string().default('كرة الموجات فوق الصوتية'),
   product_image: Joi.string().optional(),
-  image_path: Joi.string().optional(),
-  image_url: Joi.string().uri().optional(),
+  image_path: Joi.string().allow(null).optional(),
+  image_url: Joi.string().allow(null).optional(),
+  status: Joi.string().optional(),
+  created_at: Joi.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,38 +29,41 @@ export async function POST(request: NextRequest) {
     // Get client information
     const clientInfo = getClientInfo(request);
     
-    // Check IP rate limit
-    const rateLimitResult = await checkIPRateLimit(clientInfo.ip);
+    // Check IP rate limit (temporarily disabled due to API key issues)
+    // const rateLimitResult = await checkIPRateLimit(clientInfo.ip);
     
-    if (!rateLimitResult.allowed) {
-      // Log the blocked attempt
-      console.warn(`Order blocked for IP ${clientInfo.ip}: ${rateLimitResult.reason}`);
+    // if (!rateLimitResult.allowed) {
+    //   // Log the blocked attempt
+    //   console.warn(`Order blocked for IP ${clientInfo.ip}: ${rateLimitResult.reason}`);
       
-      // If this is a rate limit exceeded, block the IP with Cloudflare
-      if (rateLimitResult.reason === 'Rate limit exceeded') {
-        await blockIPWithCloudflare(clientInfo.ip, 'Rate limit exceeded (3 orders in 24h)');
-      }
+    //   // If this is a rate limit exceeded, block the IP with Cloudflare
+    //   if (rateLimitResult.reason === 'Rate limit exceeded') {
+    //     await blockIPWithCloudflare(clientInfo.ip, 'Rate limit exceeded (3 orders in 24h)');
+    //   }
       
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Order limit exceeded',
-          message: 'You have reached the maximum number of orders allowed. Please try again later.',
-          details: {
-            reason: rateLimitResult.reason,
-            remaining: rateLimitResult.remaining,
-            reset_time: rateLimitResult.reset_time,
-          }
-        },
-        { status: 429 }
-      );
-    }
+    //   return NextResponse.json(
+    //     {
+    //       success: false,
+    //       error: 'Order limit exceeded',
+    //       message: 'You have reached the maximum number of orders allowed. Please try again later.',
+    //       details: {
+    //         reason: rateLimitResult.reason,
+    //         remaining: rateLimitResult.remaining,
+    //         reset_time: rateLimitResult.reset_time,
+    //       }
+    //     },
+    //     { status: 429 }
+    //   );
+    // }
 
     // Parse and validate request body
     const body = await request.json();
+    console.log('Received order data:', body);
+    
     const { error: validationError, value: orderData } = orderSchema.validate(body);
     
     if (validationError) {
+      console.error('Validation error:', validationError.details);
       return NextResponse.json(
         {
           success: false,
@@ -67,6 +74,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    console.log('Validated order data:', orderData);
 
     // Calculate total price (assuming 3500 DZD per unit)
     const unitPrice = 3500;
@@ -75,11 +84,12 @@ export async function POST(request: NextRequest) {
     // Get Supabase client
     const supabase = getSupabaseClient();
     if (!supabase) {
+      console.error('Failed to get Supabase client')
       return NextResponse.json(
         {
           success: false,
           error: 'Database error',
-          message: 'Unable to connect to database'
+          message: 'Unable to connect to database. Please check Supabase configuration.'
         },
         { status: 500 }
       );
@@ -91,10 +101,6 @@ export async function POST(request: NextRequest) {
       .insert({
         ...orderData,
         total_price: totalPrice,
-        client_ip: clientInfo.ip,
-        user_agent: clientInfo.userAgent,
-        cloudflare_country: clientInfo.country,
-        cloudflare_ray_id: clientInfo.rayId,
         status: 'pending_cod',
       })
       .select()
@@ -106,7 +112,8 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Database error',
-          message: 'Failed to create order'
+          message: `Failed to create order: ${insertError.message}`,
+          details: insertError
         },
         { status: 500 }
       );
@@ -127,11 +134,6 @@ export async function POST(request: NextRequest) {
         quantity: order.quantity,
         status: order.status,
         created_at: order.created_at,
-      },
-      rate_limit: {
-        order_count: rateLimitResult.order_count,
-        remaining: rateLimitResult.remaining,
-        reset_time: rateLimitResult.reset_time,
       }
     });
 
