@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { performanceMonitor } from './monitoring';
+import performanceMonitor from './monitoring';
 
 // Rate limiting configuration
 interface RateLimitConfig {
