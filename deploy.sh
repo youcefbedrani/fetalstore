@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# E-commerce Store Deployment Script
-# This script handles the deployment of the Next.js e-commerce store with Cloudflare integration
+# Deployment script for Hostinger VPS
+# This script automates the deployment process
 
 set -e  # Exit on any error
-
-echo "🚀 Starting deployment of E-commerce Store with Cloudflare Integration..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,270 +12,329 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
-print_status() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+# Configuration
+APP_NAME="ultrasound-orb-store"
+DOMAIN="yourdomain.com"  # Replace with your actual domain
+EMAIL="your-email@example.com"  # Replace with your email for SSL
+BACKUP_DIR="/home/backups"
+APP_DIR="/home/$APP_NAME"
+
+# Functions
+log() {
+    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
 }
 
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+warn() {
+    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1${NC}"
 }
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+error() {
+    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
+    exit 1
 }
 
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+info() {
+    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')] INFO: $1${NC}"
 }
 
-# Check if required environment variables are set
-check_env_vars() {
-    print_status "Checking environment variables..."
+# Check if running as root
+check_root() {
+    if [[ $EUID -eq 0 ]]; then
+        error "This script should not be run as root. Please run as a regular user with sudo privileges."
+    fi
+}
+
+# Update system packages
+update_system() {
+    log "Updating system packages..."
+    sudo apt update && sudo apt upgrade -y
+    sudo apt install -y curl wget git unzip software-properties-common apt-transport-https ca-certificates gnupg lsb-release
+}
+
+# Install Docker
+install_docker() {
+    log "Installing Docker..."
     
-    required_vars=(
-        "NEXT_PUBLIC_SUPABASE_URL"
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-        "CLOUDFLARE_API_TOKEN"
-        "CLOUDFLARE_ZONE_ID"
-        "ADMIN_SECRET_TOKEN"
-    )
-    
-    missing_vars=()
-    
-    for var in "${required_vars[@]}"; do
-        if [ -z "${!var}" ]; then
-            missing_vars+=("$var")
-        fi
-    done
-    
-    if [ ${#missing_vars[@]} -ne 0 ]; then
-        print_error "Missing required environment variables:"
-        for var in "${missing_vars[@]}"; do
-            echo "  - $var"
-        done
-        exit 1
+    if command -v docker &> /dev/null; then
+        info "Docker is already installed"
+        return
     fi
     
-    print_success "All required environment variables are set"
+    # Add Docker's official GPG key
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    
+    # Add Docker repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Install Docker
+    sudo apt update
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    
+    # Add current user to docker group
+    sudo usermod -aG docker $USER
+    
+    # Start and enable Docker
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    
+    log "Docker installed successfully"
 }
 
-# Install dependencies
-install_dependencies() {
-    print_status "Installing dependencies..."
+# Install Docker Compose
+install_docker_compose() {
+    log "Installing Docker Compose..."
     
-    if [ -f "package-lock.json" ]; then
-        npm ci --production=false
+    if command -v docker-compose &> /dev/null; then
+        info "Docker Compose is already installed"
+        return
+    fi
+    
+    # Install Docker Compose
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    
+    log "Docker Compose installed successfully"
+}
+
+# Install Nginx (if not using Docker)
+install_nginx() {
+    log "Installing Nginx..."
+    
+    if command -v nginx &> /dev/null; then
+        info "Nginx is already installed"
+        return
+    fi
+    
+    sudo apt install -y nginx
+    sudo systemctl start nginx
+    sudo systemctl enable nginx
+    
+    log "Nginx installed successfully"
+}
+
+# Install Certbot for SSL
+install_certbot() {
+    log "Installing Certbot for SSL certificates..."
+    
+    if command -v certbot &> /dev/null; then
+        info "Certbot is already installed"
+        return
+    fi
+    
+    sudo apt install -y certbot python3-certbot-nginx
+    
+    log "Certbot installed successfully"
+}
+
+# Setup firewall
+setup_firewall() {
+    log "Setting up firewall..."
+    
+    sudo ufw --force reset
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow ssh
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw --force enable
+    
+    log "Firewall configured successfully"
+}
+
+# Create application directory
+create_app_directory() {
+    log "Creating application directory..."
+    
+    if [ ! -d "$APP_DIR" ]; then
+        mkdir -p "$APP_DIR"
+    fi
+    
+    cd "$APP_DIR"
+}
+
+# Clone or update repository
+setup_repository() {
+    log "Setting up repository..."
+    
+    if [ -d ".git" ]; then
+        log "Updating existing repository..."
+        git pull origin main
     else
-        npm install
-    fi
-    
-    print_success "Dependencies installed successfully"
-}
-
-# Run linting
-run_linting() {
-    print_status "Running ESLint..."
-    
-    if npm run lint; then
-        print_success "Linting passed"
-    else
-        print_warning "Linting failed, but continuing with deployment"
+        log "Cloning repository..."
+        # Replace with your actual repository URL
+        git clone https://github.com/yourusername/your-repo.git .
     fi
 }
 
-# Build the application
-build_application() {
-    print_status "Building application..."
+# Create environment file
+create_env_file() {
+    log "Creating environment file..."
     
-    # Clean previous build
-    rm -rf .next
-    
-    # Build the application
-    npm run build
-    
-    print_success "Application built successfully"
-}
+    if [ ! -f ".env.production" ]; then
+        cat > .env.production << EOF
+# Production Environment Variables
+NODE_ENV=production
 
-# Create logs directory
-create_logs_directory() {
-    print_status "Creating logs directory..."
-    
-    mkdir -p logs
-    touch logs/error.log logs/combined.log
-    chmod 644 logs/error.log logs/combined.log
-    
-    print_success "Logs directory created"
-}
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
 
-# Set up log rotation
-setup_log_rotation() {
-    print_status "Setting up log rotation..."
-    
-    cat > /etc/logrotate.d/ecommerce-store << EOF
-/home/badran/Downloads/Freelance_2025/Project_v2/website_code/logs/*.log {
-    daily
-    missingok
-    rotate 7
-    compress
-    delaycompress
-    notifempty
-    create 644 $(whoami) $(whoami)
-    postrotate
-        # Restart the application if it's running
-        if [ -f /var/run/ecommerce-store.pid ]; then
-            kill -USR1 \$(cat /var/run/ecommerce-store.pid) 2>/dev/null || true
-        fi
-    endscript
-}
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# Google Sheets Configuration
+GOOGLE_SHEETS_PRIVATE_KEY=your_google_sheets_private_key
+GOOGLE_SHEETS_CLIENT_EMAIL=your_google_sheets_client_email
+GOOGLE_SHEETS_SPREADSHEET_ID=your_google_sheets_spreadsheet_id
+
+# Optional: Monitoring
+GRAFANA_PASSWORD=your_grafana_password
 EOF
-    
-    print_success "Log rotation configured"
-}
-
-# Create systemd service
-create_systemd_service() {
-    print_status "Creating systemd service..."
-    
-    cat > /etc/systemd/system/ecommerce-store.service << EOF
-[Unit]
-Description=E-commerce Store with Cloudflare Integration
-After=network.target
-
-[Service]
-Type=simple
-User=$(whoami)
-WorkingDirectory=/home/badran/Downloads/Freelance_2025/Project_v2/website_code
-ExecStart=/usr/bin/npm start
-Restart=always
-RestartSec=10
-Environment=NODE_ENV=production
-EnvironmentFile=/home/badran/Downloads/Freelance_2025/Project_v2/website_code/.env.local
-PIDFile=/var/run/ecommerce-store.pid
-
-[Install]
-WantedBy=multi-user.target
-EOF
-    
-    systemctl daemon-reload
-    print_success "Systemd service created"
-}
-
-# Start the service
-start_service() {
-    print_status "Starting e-commerce store service..."
-    
-    systemctl enable ecommerce-store
-    systemctl start ecommerce-store
-    
-    # Wait a moment for the service to start
-    sleep 5
-    
-    if systemctl is-active --quiet ecommerce-store; then
-        print_success "Service started successfully"
-    else
-        print_error "Failed to start service"
-        systemctl status ecommerce-store
-        exit 1
-    fi
-}
-
-# Health check
-health_check() {
-    print_status "Performing health check..."
-    
-    # Wait for the service to be ready
-    sleep 10
-    
-    # Check if the service is responding
-    if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
-        print_success "Health check passed"
-    else
-        print_error "Health check failed"
-        print_status "Service logs:"
-        journalctl -u ecommerce-store --no-pager -n 20
-        exit 1
-    fi
-}
-
-# Setup monitoring
-setup_monitoring() {
-    print_status "Setting up monitoring..."
-    
-    # Create monitoring script
-    cat > /home/badran/Downloads/Freelance_2025/Project_v2/website_code/monitor.sh << 'EOF'
-#!/bin/bash
-
-# Simple monitoring script for the e-commerce store
-LOG_FILE="/home/badran/Downloads/Freelance_2025/Project_v2/website_code/logs/monitor.log"
-
-check_service() {
-    if ! systemctl is-active --quiet ecommerce-store; then
-        echo "$(date): Service is down, attempting restart..." >> $LOG_FILE
-        systemctl restart ecommerce-store
-        sleep 10
         
-        if systemctl is-active --quiet ecommerce-store; then
-            echo "$(date): Service restarted successfully" >> $LOG_FILE
-        else
-            echo "$(date): Failed to restart service" >> $LOG_FILE
-        fi
+        warn "Please edit .env.production file with your actual configuration values"
+        warn "Run: nano .env.production"
     fi
 }
 
-check_health() {
-    if ! curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
-        echo "$(date): Health check failed" >> $LOG_FILE
+# Build and start application
+deploy_application() {
+    log "Building and starting application..."
+    
+    # Stop existing containers
+    docker-compose down 2>/dev/null || true
+    
+    # Build and start
+    docker-compose --env-file .env.production up -d --build
+    
+    # Wait for application to be ready
+    log "Waiting for application to be ready..."
+    sleep 30
+    
+    # Check if application is running
+    if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+        log "Application is running successfully!"
+    else
+        error "Application failed to start. Check logs with: docker-compose logs"
     fi
 }
 
-check_service
-check_health
+# Setup SSL certificate
+setup_ssl() {
+    log "Setting up SSL certificate..."
+    
+    # Note: This assumes you're using the standalone Nginx setup
+    # For Docker setup, you'll need to modify the nginx.conf file
+    
+    if [ "$DOMAIN" != "yourdomain.com" ]; then
+        sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL"
+        log "SSL certificate installed successfully"
+    else
+        warn "Please update the DOMAIN variable in this script and run SSL setup manually"
+    fi
+}
+
+# Setup monitoring (optional)
+setup_monitoring() {
+    log "Setting up monitoring..."
+    
+    # Start monitoring services
+    docker-compose --profile monitoring up -d
+    
+    log "Monitoring services started"
+    info "Grafana: http://$DOMAIN:3001 (admin/your_grafana_password)"
+    info "Prometheus: http://$DOMAIN:9090"
+}
+
+# Create backup script
+create_backup_script() {
+    log "Creating backup script..."
+    
+    cat > backup.sh << 'EOF'
+#!/bin/bash
+# Backup script for the application
+
+BACKUP_DIR="/home/backups"
+APP_DIR="/home/ultrasound-orb-store"
+DATE=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p "$BACKUP_DIR"
+
+# Backup application data
+tar -czf "$BACKUP_DIR/app_backup_$DATE.tar.gz" -C "$APP_DIR" .
+
+# Backup database (if using local database)
+# pg_dump your_database > "$BACKUP_DIR/db_backup_$DATE.sql"
+
+# Keep only last 7 days of backups
+find "$BACKUP_DIR" -name "*.tar.gz" -mtime +7 -delete
+
+echo "Backup completed: $BACKUP_DIR/app_backup_$DATE.tar.gz"
 EOF
     
-    chmod +x /home/badran/Downloads/Freelance_2025/Project_v2/website_code/monitor.sh
+    chmod +x backup.sh
     
-    # Add to crontab for monitoring every 5 minutes
-    (crontab -l 2>/dev/null; echo "*/5 * * * * /home/badran/Downloads/Freelance_2025/Project_v2/website_code/monitor.sh") | crontab -
+    # Add to crontab for daily backups
+    (crontab -l 2>/dev/null; echo "0 2 * * * $APP_DIR/backup.sh") | crontab -
     
-    print_success "Monitoring setup completed"
+    log "Backup script created and scheduled"
+}
+
+# Setup log rotation
+setup_log_rotation() {
+    log "Setting up log rotation..."
+    
+    sudo tee /etc/logrotate.d/docker-app << EOF
+/var/lib/docker/containers/*/*.log {
+    rotate 7
+    daily
+    compress
+    size=1M
+    missingok
+    delaycompress
+    copytruncate
+}
+EOF
+    
+    log "Log rotation configured"
 }
 
 # Main deployment function
 main() {
-    echo "=========================================="
-    echo "E-commerce Store Deployment Script"
-    echo "=========================================="
+    log "Starting deployment process..."
     
-    check_env_vars
-    install_dependencies
-    run_linting
-    build_application
-    create_logs_directory
-    setup_log_rotation
-    create_systemd_service
-    start_service
-    health_check
+    check_root
+    update_system
+    install_docker
+    install_docker_compose
+    install_nginx
+    install_certbot
+    setup_firewall
+    create_app_directory
+    setup_repository
+    create_env_file
+    
+    warn "IMPORTANT: Please edit .env.production with your actual configuration values before continuing"
+    warn "Run: nano .env.production"
+    read -p "Press Enter after updating the environment file..."
+    
+    deploy_application
+    setup_ssl
     setup_monitoring
+    create_backup_script
+    setup_log_rotation
     
-    echo "=========================================="
-    print_success "Deployment completed successfully!"
-    echo "=========================================="
-    echo ""
-    echo "Service Status:"
-    systemctl status ecommerce-store --no-pager
-    echo ""
-    echo "Access URLs:"
-    echo "  - Main Store: http://localhost:3000"
-    echo "  - Admin Dashboard: http://localhost:3000/admin"
-    echo "  - Health Check: http://localhost:3000/api/health"
-    echo ""
-    echo "Useful Commands:"
-    echo "  - View logs: journalctl -u ecommerce-store -f"
-    echo "  - Restart service: systemctl restart ecommerce-store"
-    echo "  - Stop service: systemctl stop ecommerce-store"
-    echo "  - Check status: systemctl status ecommerce-store"
-    echo ""
+    log "Deployment completed successfully!"
+    info "Your application is now running at: http://$DOMAIN"
+    info "Health check: http://$DOMAIN/api/health"
+    info "Admin panel: http://$DOMAIN/admin"
+    
+    log "Useful commands:"
+    info "View logs: docker-compose logs -f"
+    info "Restart app: docker-compose restart"
+    info "Update app: git pull && docker-compose up -d --build"
+    info "Backup: ./backup.sh"
 }
 
 # Run main function

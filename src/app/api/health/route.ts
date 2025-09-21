@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/lib/supabase';
+import { db } from '@/lib/database';
+import { cacheUtils } from '@/lib/cache';
 import { getCloudflareConfig } from '@/lib/cloudflare';
 
 export async function GET() {
@@ -15,6 +16,7 @@ export async function GET() {
       services: {
         database: 'unknown',
         cloudflare: 'unknown',
+        cache: 'unknown',
       },
       metrics: {
         responseTime: 0,
@@ -22,22 +24,24 @@ export async function GET() {
       }
     };
 
-    // Check database connectivity
+    // Check database connectivity using optimized service
     try {
-      const supabase = getSupabaseClient();
-      if (supabase) {
-        const { error } = await supabase
-          .from('orders')
-          .select('id')
-          .limit(1);
-        
-        health.services.database = error ? 'unhealthy' : 'healthy';
-      } else {
-        health.services.database = 'unavailable';
-      }
+      const { data: dbHealth, error: dbError } = await db.healthCheck();
+      health.services.database = dbError ? 'unhealthy' : 'healthy';
+      health.services.databaseDetails = dbHealth;
     } catch (error) {
       health.services.database = 'unhealthy';
       console.error('Database health check failed:', error);
+    }
+
+    // Check cache system
+    try {
+      const cacheStats = cacheUtils.getStats();
+      health.services.cache = 'healthy';
+      health.services.cacheStats = cacheStats;
+    } catch (error) {
+      health.services.cache = 'unhealthy';
+      console.error('Cache health check failed:', error);
     }
 
     // Check Cloudflare configuration

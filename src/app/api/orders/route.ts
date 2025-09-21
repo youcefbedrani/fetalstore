@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/lib/supabase';
+import { db } from '@/lib/database';
 import { getClientInfo } from '@/lib/ip-tracking';
+import { createCacheMiddleware } from '@/lib/cache';
+import { createRateLimit, rateLimitConfigs } from '@/lib/rateLimiting';
+import { withPerformanceMonitoring } from '@/lib/monitoring';
 // import { checkIPRateLimit } from '@/lib/ip-tracking';
 // import { blockIPWithCloudflare } from '@/lib/cloudflare';
 import Joi from 'joi';
@@ -24,37 +27,14 @@ const orderSchema = Joi.object({
   created_at: Joi.string().optional(),
 });
 
-export async function POST(request: NextRequest) {
+// Create rate limit middleware for orders
+const orderRateLimit = createRateLimit(rateLimitConfigs.orders);
+
+// Create performance monitoring wrapper
+const monitoredPOST = withPerformanceMonitoring(async (request: NextRequest) => {
   try {
     // Get client information
     const clientInfo = getClientInfo(request);
-    
-    // Check IP rate limit (temporarily disabled due to API key issues)
-    // const rateLimitResult = await checkIPRateLimit(clientInfo.ip);
-    
-    // if (!rateLimitResult.allowed) {
-    //   // Log the blocked attempt
-    //   console.warn(`Order blocked for IP ${clientInfo.ip}: ${rateLimitResult.reason}`);
-      
-    //   // If this is a rate limit exceeded, block the IP with Cloudflare
-    //   if (rateLimitResult.reason === 'Rate limit exceeded') {
-    //     await blockIPWithCloudflare(clientInfo.ip, 'Rate limit exceeded (3 orders in 24h)');
-    //   }
-      
-    //   return NextResponse.json(
-    //     {
-    //       success: false,
-    //       error: 'Order limit exceeded',
-    //       message: 'You have reached the maximum number of orders allowed. Please try again later.',
-    //       details: {
-    //         reason: rateLimitResult.reason,
-    //         remaining: rateLimitResult.remaining,
-    //         reset_time: rateLimitResult.reset_time,
-    //       }
-    //     },
-    //     { status: 429 }
-    //   );
-    // }
 
     // Parse and validate request body
     const body = await request.json();
@@ -81,30 +61,12 @@ export async function POST(request: NextRequest) {
     const unitPrice = 3500;
     const totalPrice = orderData.quantity * unitPrice;
 
-    // Get Supabase client
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      console.error('Failed to get Supabase client')
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Database error',
-          message: 'Unable to connect to database. Please check Supabase configuration.'
-        },
-        { status: 500 }
-      );
-    }
-
-    // Create order in database
-    const { data: order, error: insertError } = await supabase
-      .from('orders')
-      .insert({
-        ...orderData,
-        total_price: totalPrice,
-        status: 'pending_cod',
-      })
-      .select()
-      .single();
+    // Create order using optimized database service
+    const { data: order, error: insertError } = await db.createOrder({
+      ...orderData,
+      total_price: totalPrice,
+      status: 'pending_cod',
+    });
 
     if (insertError) {
       console.error('Error creating order:', insertError);
@@ -137,72 +99,84 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error) {
-    console.error('Unexpected error in order creation:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        message: 'An unexpected error occurred'
-      },
-      { status: 500 }
-    );
+    } catch (error) {
+      console.error('Unexpected error in order creation:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Internal server error',
+          message: 'An unexpected error occurred'
+        },
+        { status: 500 }
+      );
+    }
   }
-}
+});
 
-// Get orders (admin endpoint)
+// Export the rate-limited and monitored POST handler
+export const POST = (request: NextRequest) => 
+  orderRateLimit(request, () => monitoredPOST(request));
+
+// Get orders (admin endpoint) with caching
 export async function GET(request: NextRequest) {
-  try {
-    // Check for admin authentication (you should implement proper auth)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+  // Create cache middleware for this endpoint
+  const cacheMiddleware = createCacheMiddleware({
+    ttl: 300000, // 5 minutes
+    keyGenerator: (req) => {
+      const url = new URL(req.url);
+      const limit = url.searchParams.get('limit') || '50';
+      const offset = url.searchParams.get('offset') || '0';
+      return `orders:${limit}:${offset}`;
+    },
+    skipCache: (req) => {
+      // Skip cache for admin requests without proper auth
+      const authHeader = req.headers.get('authorization');
+      return !authHeader || !authHeader.startsWith('Bearer ');
     }
+  });
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { success: false, error: 'Database error' },
-        { status: 500 }
-      );
-    }
-
-    const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
-
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      console.error('Error fetching orders:', error);
-      return NextResponse.json(
-        { success: false, error: 'Database error' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      orders,
-      pagination: {
-        limit,
-        offset,
-        has_more: orders.length === limit
+  return cacheMiddleware(request, async () => {
+    try {
+      // Check for admin authentication (you should implement proper auth)
+      const authHeader = request.headers.get('authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized' },
+          { status: 401 }
+        );
       }
-    });
 
-  } catch (error) {
-    console.error('Error in GET orders:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+      const url = new URL(request.url);
+      const limit = parseInt(url.searchParams.get('limit') || '50');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+
+      // Use optimized database service
+      const { data: orders, error } = await db.getOrders(limit, offset);
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+        return NextResponse.json(
+          { success: false, error: 'Database error' },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        orders,
+        pagination: {
+          limit,
+          offset,
+          has_more: orders.length === limit
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in GET orders:', error);
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
+    }
+  });
 }
