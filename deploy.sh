@@ -40,15 +40,16 @@ info() {
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        error "This script should not be run as root. Please run as a regular user with sudo privileges."
+        warn "Running as root. This is acceptable for VPS deployment, but consider using a regular user for security."
+        # Don't exit, just warn
     fi
 }
 
 # Update system packages
 update_system() {
     log "Updating system packages..."
-    sudo apt update && sudo apt upgrade -y
-    sudo apt install -y curl wget git unzip software-properties-common apt-transport-https ca-certificates gnupg lsb-release
+    apt update && apt upgrade -y
+    apt install -y curl wget git unzip software-properties-common apt-transport-https ca-certificates gnupg lsb-release
 }
 
 # Install Docker
@@ -61,21 +62,18 @@ install_docker() {
     fi
     
     # Add Docker's official GPG key
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
     
     # Add Docker repository
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # Install Docker
-    sudo apt update
-    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    
-    # Add current user to docker group
-    sudo usermod -aG docker $USER
+    apt update
+    apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
     
     # Start and enable Docker
-    sudo systemctl start docker
-    sudo systemctl enable docker
+    systemctl start docker
+    systemctl enable docker
     
     log "Docker installed successfully"
 }
@@ -90,8 +88,8 @@ install_docker_compose() {
     fi
     
     # Install Docker Compose
-    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
     
     log "Docker Compose installed successfully"
 }
@@ -105,9 +103,9 @@ install_nginx() {
         return
     fi
     
-    sudo apt install -y nginx
-    sudo systemctl start nginx
-    sudo systemctl enable nginx
+    apt install -y nginx
+    systemctl start nginx
+    systemctl enable nginx
     
     log "Nginx installed successfully"
 }
@@ -121,7 +119,7 @@ install_certbot() {
         return
     fi
     
-    sudo apt install -y certbot python3-certbot-nginx
+    apt install -y certbot python3-certbot-nginx
     
     log "Certbot installed successfully"
 }
@@ -130,13 +128,13 @@ install_certbot() {
 setup_firewall() {
     log "Setting up firewall..."
     
-    sudo ufw --force reset
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
-    sudo ufw allow ssh
-    sudo ufw allow 80/tcp
-    sudo ufw allow 443/tcp
-    sudo ufw --force enable
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw --force enable
     
     log "Firewall configured successfully"
 }
@@ -228,7 +226,7 @@ setup_ssl() {
     # For Docker setup, you'll need to modify the nginx.conf file
     
     if [ "$DOMAIN" != "yourdomain.com" ]; then
-        sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL"
+        certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$EMAIL"
         log "SSL certificate installed successfully"
     else
         warn "Please update the DOMAIN variable in this script and run SSL setup manually"
@@ -285,7 +283,7 @@ EOF
 setup_log_rotation() {
     log "Setting up log rotation..."
     
-    sudo tee /etc/logrotate.d/docker-app << EOF
+    tee /etc/logrotate.d/docker-app << EOF
 /var/lib/docker/containers/*/*.log {
     rotate 7
     daily
