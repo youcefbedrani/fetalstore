@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const adminToken = 'admin_public_token_2025_67890';
+  const adminToken = 'admin_secret_token_2025_secure_12345';
 
   // Strong password authentication
   const handleLogin = async (e: React.FormEvent) => {
