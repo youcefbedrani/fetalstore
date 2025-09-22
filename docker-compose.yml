@@ -16,6 +16,8 @@ services:
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
       - GOOGLE_SHEETS_SPREADSHEET_ID=${GOOGLE_SHEETS_SPREADSHEET_ID}
+      - ADMIN_SECRET_TOKEN=admin_secret_token_2025_secure_12345
+      - NEXT_PUBLIC_ADMIN_TOKEN=admin_public_token_2025_67890
     depends_on:
       - redis
     restart: unless-stopped
