@@ -100,6 +100,13 @@ export const useProtection = (config: ProtectionConfig = {}) => {
       // F12 (Developer tools)
       { key: 'F12' },
       
+      // Print Screen (Screenshot)
+      { key: 'PrintScreen' },
+      { key: 'PrintScreen', alt: true },
+      
+      // Windows Snipping Tool
+      { key: 's', shift: true, meta: true },
+      
       // Alt combinations
       { key: 'F4', alt: true },
       
@@ -217,6 +224,52 @@ export const useProtection = (config: ProtectionConfig = {}) => {
         -ms-context-menu: none !important;
         context-menu: none !important;
       }
+      
+      /* Screenshot Protection */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        z-index: 999999;
+        pointer-events: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+      
+      /* Prevent printing */
+      @media print {
+        * {
+          display: none !important;
+        }
+        body {
+          display: none !important;
+        }
+      }
+      
+      /* Additional screenshot protection */
+      html, body {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -khtml-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      
+      /* Disable text selection on all elements except inputs */
+      *:not(input):not(textarea):not([contenteditable]) {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+      }
     `;
     
     document.head.appendChild(style);
@@ -281,7 +334,7 @@ export const useProtection = (config: ProtectionConfig = {}) => {
     setInterval(checkWindowSize, 500);
     setInterval(checkConsole, 1000);
     
-    // Method 3: Disable common dev tools shortcuts
+    // Method 3: Disable common dev tools and screenshot shortcuts
     const disableDevTools = (e: KeyboardEvent) => {
       // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
       if (e.ctrlKey && e.shiftKey && ['I', 'J', 'C', 'i', 'j', 'c'].includes(e.key)) {
@@ -298,6 +351,26 @@ export const useProtection = (config: ProtectionConfig = {}) => {
         e.stopPropagation();
         console.clear();
         console.log('%c🚫 F12 Blocked!', 'color: red; font-size: 30px; font-weight: bold;');
+        return false;
+      }
+      
+      // Block Print Screen (Screenshot)
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        e.stopPropagation();
+        console.clear();
+        console.log('%c📸 Screenshot Blocked!', 'color: red; font-size: 30px; font-weight: bold;');
+        console.log('%cScreenshots are not allowed on this website!', 'color: red; font-size: 16px;');
+        return false;
+      }
+      
+      // Block Windows Snipping Tool (Win + Shift + S)
+      if (e.key === 's' && e.shiftKey && e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.clear();
+        console.log('%c✂️ Snipping Tool Blocked!', 'color: red; font-size: 30px; font-weight: bold;');
+        console.log('%cScreenshots are not allowed on this website!', 'color: red; font-size: 16px;');
         return false;
       }
     };

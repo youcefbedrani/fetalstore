@@ -129,11 +129,7 @@ const nextConfig: NextConfig = {
   // Redirects for SEO
   async redirects() {
     return [
-      {
-        source: '/admin',
-        destination: '/admin/',
-        permanent: true,
-      },
+      // Remove admin redirect to prevent loop
     ];
   },
 

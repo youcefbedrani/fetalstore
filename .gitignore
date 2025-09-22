@@ -1,11 +1,16 @@
 # Dependencies
 node_modules/
-demo-project/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Production builds
+# Next.js
 .next/
-demo-project/.next/
 out/
+build/
+dist/
 
 # Environment variables
 .env
@@ -13,13 +18,34 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Logs
-logs/
+logs
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # Runtime data
 pids
@@ -29,6 +55,7 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
+*.lcov
 
 # nyc test coverage
 .nyc_output
@@ -39,6 +66,15 @@ jspm_packages/
 # Optional npm cache directory
 .npm
 
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
 # Optional REPL history
 .node_repl_history
 
@@ -48,51 +84,76 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
 
-# next.js build output
+# Next.js build output
 .next
 
-# nuxt.js build output
+# Nuxt.js build / generate output
 .nuxt
+dist
 
-# vuepress build output
-.vuepress/dist
+# Gatsby files
+.cache/
+public
 
-# Serverless directories
-.serverless
+# Storybook build outputs
+.out
+.storybook-out
 
-# FuseBox cache
-.fusebox/
+# Temporary folders
+tmp/
+temp/
 
-# DynamoDB Local files
-.dynamodb/
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# TernJS port file
-.tern-port
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
+# Production environment (contains sensitive data)
+.env.production
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Backup files
+*.bak
+*.backup
+*.old
 
-# Demo project (exclude from main build)
-demo-project/
+# Test files
+test-results/
+playwright-report/
+test-results.xml
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.csr
+
+# Admin password files
+admin_password.txt
+password_hash.txt
+
+# Generated files
+generate_admin_password.js

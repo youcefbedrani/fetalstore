@@ -610,6 +610,19 @@ export default function Home() {
         console.log('✅ Order submitted successfully without image (upload failed)')
       }
       
+      // Track purchase with Meta Pixel
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Purchase', {
+          value: getQuantityPrice(formData.quantity),
+          currency: 'DZD',
+          content_name: 'كرة الموجات فوق الصوتية',
+          content_category: 'هدايا',
+          content_ids: ['ultrasound-orb'],
+          num_items: formData.quantity
+        });
+        console.log('✅ Meta Pixel Purchase event tracked');
+      }
+      
       setShowSuccess(true)
       
     } catch (error) {
