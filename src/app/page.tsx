@@ -96,6 +96,22 @@ export default function Home() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [hasStartedForm, setHasStartedForm] = useState(false)
 
+  // Track page view and view content on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      // Track ViewContent event for the product
+      (window as any).fbq('track', 'ViewContent', {
+        content_name: 'كرة الموجات فوق الصوتية',
+        content_category: 'هدايا',
+        content_ids: ['ultrasound-orb'],
+        content_type: 'product',
+        value: productPrice,
+        currency: 'DZD'
+      });
+      console.log('✅ Meta Pixel ViewContent event tracked');
+    }
+  }, [])
+
   // Scroll to top when thank you page is shown
   useEffect(() => {
     if (showSuccess) {
@@ -610,18 +626,31 @@ export default function Home() {
         console.log('✅ Order submitted successfully without image (upload failed)')
       }
       
-      // Track purchase with Meta Pixel
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
-          value: getQuantityPrice(formData.quantity),
-          currency: 'DZD',
-          content_name: 'كرة الموجات فوق الصوتية',
-          content_category: 'هدايا',
-          content_ids: ['ultrasound-orb'],
-          num_items: formData.quantity
-        });
-        console.log('✅ Meta Pixel Purchase event tracked');
-      }
+      // Track purchase with Meta Pixel - Enhanced implementation
+      const trackPurchaseEvent = () => {
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+          try {
+            (window as any).fbq('track', 'Purchase', {
+              value: getQuantityPrice(formData.quantity),
+              currency: 'DZD',
+              content_name: 'كرة الموجات فوق الصوتية',
+              content_category: 'هدايا',
+              content_ids: ['ultrasound-orb'],
+              num_items: formData.quantity,
+              order_id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            });
+            console.log('✅ Meta Pixel Purchase event tracked successfully');
+          } catch (error) {
+            console.error('❌ Meta Pixel Purchase event failed:', error);
+          }
+        } else {
+          console.warn('⚠️ Meta Pixel not available, retrying in 1 second...');
+          setTimeout(trackPurchaseEvent, 1000);
+        }
+      };
+      
+      // Track the purchase event
+      trackPurchaseEvent();
       
       setShowSuccess(true)
       
@@ -903,6 +932,32 @@ export default function Home() {
                         // Mark that user has started filling the form
                         if (!hasStartedForm) {
                           setHasStartedForm(true)
+                          
+                          // Track InitiateCheckout event when user starts the form
+                          if (typeof window !== 'undefined' && (window as any).fbq) {
+                            (window as any).fbq('track', 'InitiateCheckout', {
+                              value: getQuantityPrice(qty),
+                              currency: 'DZD',
+                              content_name: 'كرة الموجات فوق الصوتية',
+                              content_category: 'هدايا',
+                              content_ids: ['ultrasound-orb'],
+                              num_items: qty
+                            });
+                            console.log('✅ Meta Pixel InitiateCheckout event tracked');
+                          }
+                        }
+                        
+                        // Track AddToCart event when quantity is selected
+                        if (typeof window !== 'undefined' && (window as any).fbq) {
+                          (window as any).fbq('track', 'AddToCart', {
+                            value: getQuantityPrice(qty),
+                            currency: 'DZD',
+                            content_name: 'كرة الموجات فوق الصوتية',
+                            content_category: 'هدايا',
+                            content_ids: ['ultrasound-orb'],
+                            num_items: qty
+                          });
+                          console.log('✅ Meta Pixel AddToCart event tracked');
                         }
                       }}
                       className={`p-3 sm:p-4 border-2 rounded-lg text-center transition-all ${
