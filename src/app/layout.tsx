@@ -10,6 +10,7 @@ import MobileScreenshotProtection from "@/components/MobileScreenshotProtection"
 import EnhancedMobileProtection from "@/components/EnhancedMobileProtection";
 import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtection";
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
+import MetaPixel from "@/components/MetaPixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,8 +47,21 @@ export default function RootLayout({
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '24528287270184892');
-              fbq('track', 'PageView');
+              
+              // Initialize pixel with proper error handling
+              try {
+                fbq('init', '24528287270184892');
+                
+                // Wait for pixel to be fully loaded before tracking
+                setTimeout(function() {
+                  fbq('track', 'PageView');
+                  console.log('✅ Meta Pixel PageView tracked successfully');
+                }, 100);
+                
+                console.log('✅ Meta Pixel initialized successfully');
+              } catch (error) {
+                console.error('❌ Meta Pixel initialization failed:', error);
+              }
             `,
           }}
         />
@@ -77,6 +91,7 @@ export default function RootLayout({
           }}
           enableInProduction={true}
         >
+          <MetaPixel />
           <VisitorTracker />
           <ScreenshotProtection enabled={true} />
           <AdvancedScreenshotProtection enabled={true} />
