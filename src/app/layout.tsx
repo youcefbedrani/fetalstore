@@ -10,7 +10,7 @@ import MobileScreenshotProtection from "@/components/MobileScreenshotProtection"
 import EnhancedMobileProtection from "@/components/EnhancedMobileProtection";
 import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtection";
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
-import MetaPixel from "@/components/MetaPixel";
+import SimpleMetaPixel from "@/components/SimpleMetaPixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
-        {/* Meta Pixel Code */}
+        {/* Meta Pixel Code - Facebook Official Implementation */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -47,21 +47,8 @@ export default function RootLayout({
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              
-              // Initialize pixel with proper error handling
-              try {
-                fbq('init', '24528287270184892');
-                
-                // Wait for pixel to be fully loaded before tracking
-                setTimeout(function() {
-                  fbq('track', 'PageView');
-                  console.log('✅ Meta Pixel PageView tracked successfully');
-                }, 100);
-                
-                console.log('✅ Meta Pixel initialized successfully');
-              } catch (error) {
-                console.error('❌ Meta Pixel initialization failed:', error);
-              }
+              fbq('init', '24528287270184892');
+              fbq('track', 'PageView');
             `,
           }}
         />
@@ -70,7 +57,7 @@ export default function RootLayout({
             height="1"
             width="1"
             style={{ display: 'none' }}
-            src={`https://www.facebook.com/tr?id=24528287270184892&ev=PageView&noscript=1`}
+            src="https://www.facebook.com/tr?id=24528287270184892&ev=PageView&noscript=1"
             alt=""
           />
         </noscript>
@@ -91,7 +78,7 @@ export default function RootLayout({
           }}
           enableInProduction={true}
         >
-          <MetaPixel />
+          <SimpleMetaPixel />
           <VisitorTracker />
           <ScreenshotProtection enabled={true} />
           <AdvancedScreenshotProtection enabled={true} />

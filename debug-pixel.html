@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meta Pixel Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .log {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Meta Pixel Debug Tool</h1>
+        <p>This tool will help diagnose Meta Pixel issues on your website.</p>
+        
+        <div id="status" class="status info">
+            <strong>Status:</strong> Ready to test
+        </div>
+        
+        <div>
+            <button onclick="testPixel()">Test Pixel</button>
+            <button onclick="sendTestEvent()">Send Test Event</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Pixel Information</h2>
+        <div id="pixelInfo">
+            <p><strong>Pixel ID:</strong> <span id="pixelId">24528287270184892</span></p>
+            <p><strong>Pixel Available:</strong> <span id="pixelAvailable">Checking...</span></p>
+            <p><strong>Script Loaded:</strong> <span id="scriptLoaded">Checking...</span></p>
+            <p><strong>Events Sent:</strong> <span id="eventsSent">0</span></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 Debug Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Events</h2>
+        <p>Use these buttons to test different pixel events:</p>
+        <button onclick="testPageView()">PageView</button>
+        <button onclick="testViewContent()">ViewContent</button>
+        <button onclick="testAddToCart()">AddToCart</button>
+        <button onclick="testPurchase()">Purchase</button>
+        <button onclick="testAllEvents()">All Events</button>
+    </div>
+
+    <!-- Meta Pixel Code -->
+    <script>
+        // Facebook's official pixel code
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '24528287270184892');
+        fbq('track', 'PageView');
+    </script>
+    <noscript>
+        <img height="1" width="1" style="display:none" 
+             src="https://www.facebook.com/tr?id=24528287270184892&ev=PageView&noscript=1" alt=""/>
+    </noscript>
+
+    <script>
+        let eventCount = 0;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `status ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+        
+        function testPixel() {
+            log('🔍 Testing Meta Pixel...', 'info');
+            
+            // Check if pixel is available
+            if (typeof window.fbq !== 'undefined') {
+                document.getElementById('pixelAvailable').textContent = '✅ Yes';
+                log('✅ Meta Pixel is available', 'success');
+                
+                // Check if script is loaded
+                const scripts = document.querySelectorAll('script[src*="fbevents.js"]');
+                if (scripts.length > 0) {
+                    document.getElementById('scriptLoaded').textContent = '✅ Yes';
+                    log('✅ Facebook Pixel script is loaded', 'success');
+                } else {
+                    document.getElementById('scriptLoaded').textContent = '❌ No';
+                    log('❌ Facebook Pixel script not found', 'error');
+                }
+                
+                updateStatus('Pixel is working correctly', 'success');
+            } else {
+                document.getElementById('pixelAvailable').textContent = '❌ No';
+                document.getElementById('scriptLoaded').textContent = '❌ No';
+                log('❌ Meta Pixel is not available', 'error');
+                updateStatus('Pixel is not working', 'error');
+            }
+        }
+        
+        function sendTestEvent() {
+            if (typeof window.fbq === 'undefined') {
+                log('❌ Cannot send test event - Meta Pixel not available', 'error');
+                return;
+            }
+            
+            try {
+                window.fbq('track', 'PageView', {
+                    test_event_code: 'TEST93223'
+                });
+                eventCount++;
+                document.getElementById('eventsSent').textContent = eventCount;
+                log('✅ Test PageView event sent with TEST93223', 'success');
+            } catch (error) {
+                log(`❌ Failed to send test event: ${error.message}`, 'error');
+            }
+        }
+        
+        function testPageView() {
+            if (typeof window.fbq === 'undefined') {
+                log('❌ Meta Pixel not available', 'error');
+                return;
+            }
+            
+            try {
+                window.fbq('track', 'PageView', {
+                    test_event_code: 'TEST93223'
+                });
+                eventCount++;
+                document.getElementById('eventsSent').textContent = eventCount;
+                log('✅ PageView event sent', 'success');
+            } catch (error) {
+                log(`❌ PageView failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testViewContent() {
+            if (typeof window.fbq === 'undefined') {
+                log('❌ Meta Pixel not available', 'error');
+                return;
+            }
+            
+            try {
+                window.fbq('track', 'ViewContent', {
+                    content_name: 'كرة الموجات فوق الصوتية',
+                    content_category: 'هدايا',
+                    content_ids: ['ultrasound-orb'],
+                    value: 5000,
+                    currency: 'DZD',
+                    test_event_code: 'TEST93223'
+                });
+                eventCount++;
+                document.getElementById('eventsSent').textContent = eventCount;
+                log('✅ ViewContent event sent', 'success');
+            } catch (error) {
+                log(`❌ ViewContent failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testAddToCart() {
+            if (typeof window.fbq === 'undefined') {
+                log('❌ Meta Pixel not available', 'error');
+                return;
+            }
+            
+            try {
+                window.fbq('track', 'AddToCart', {
+                    content_name: 'كرة الموجات فوق الصوتية',
+                    content_category: 'هدايا',
+                    content_ids: ['ultrasound-orb'],
+                    value: 5000,
+                    currency: 'DZD',
+                    num_items: 1,
+                    test_event_code: 'TEST93223'
+                });
+                eventCount++;
+                document.getElementById('eventsSent').textContent = eventCount;
+                log('✅ AddToCart event sent', 'success');
+            } catch (error) {
+                log(`❌ AddToCart failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testPurchase() {
+            if (typeof window.fbq === 'undefined') {
+                log('❌ Meta Pixel not available', 'error');
+                return;
+            }
+            
+            try {
+                window.fbq('track', 'Purchase', {
+                    value: 5000,
+                    currency: 'DZD',
+                    content_name: 'كرة الموجات فوق الصوتية',
+                    content_category: 'هدايا',
+                    content_ids: ['ultrasound-orb'],
+                    num_items: 1,
+                    order_id: `test_order_${Date.now()}`,
+                    test_event_code: 'TEST93223'
+                });
+                eventCount++;
+                document.getElementById('eventsSent').textContent = eventCount;
+                log('✅ Purchase event sent', 'success');
+            } catch (error) {
+                log(`❌ Purchase failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function testAllEvents() {
+            log('🧪 Testing all events...', 'info');
+            testPageView();
+            setTimeout(() => testViewContent(), 1000);
+            setTimeout(() => testAddToCart(), 2000);
+            setTimeout(() => testPurchase(), 3000);
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', function() {
+            setTimeout(testPixel, 1000);
+        });
+    </script>
+</body>
+</html>
