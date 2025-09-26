@@ -10,7 +10,7 @@ import MobileScreenshotProtection from "@/components/MobileScreenshotProtection"
 import EnhancedMobileProtection from "@/components/EnhancedMobileProtection";
 import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtection";
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
-import DynamicPixel from "@/components/DynamicPixel";
+import PixelFriendly from "@/components/PixelFriendly";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,34 +35,30 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
-        {/* Meta Pixel Code - Dynamic Implementation */}
+        {/* Meta Pixel Code - Bypass Protection */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Meta Pixel Base Code
-              !function(f,b,e,v,n,t,s)
-              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-              n.queue=[];t=b.createElement(e);t.async=!0;
-              t.src=v;s=b.getElementsByTagName(e)[0];
-              s.parentNode.insertBefore(t,s)}(window, document,'script',
-              'https://connect.facebook.net/en_US/fbevents.js');
-              
-              // Initialize pixel with error handling
+              // Load pixel BEFORE any protection systems
               (function() {
                 try {
+                  // Facebook's official pixel code
+                  !function(f,b,e,v,n,t,s)
+                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                  n.queue=[];t=b.createElement(e);t.async=!0;
+                  t.src=v;s=b.getElementsByTagName(e)[0];
+                  s.parentNode.insertBefore(t,s)}(window, document,'script',
+                  'https://connect.facebook.net/en_US/fbevents.js');
+                  
+                  // Initialize immediately
                   fbq('init', '24528287270184892');
-                  console.log('✅ Meta Pixel initialized in head');
+                  fbq('track', 'PageView');
                   
-                  // Track PageView with delay
-                  setTimeout(function() {
-                    fbq('track', 'PageView');
-                    console.log('✅ Meta Pixel PageView tracked in head');
-                  }, 500);
-                  
+                  console.log('✅ Meta Pixel loaded BEFORE protection systems');
                 } catch (error) {
-                  console.error('❌ Meta Pixel initialization failed in head:', error);
+                  console.error('❌ Meta Pixel failed:', error);
                 }
               })();
             `,
@@ -94,7 +90,7 @@ export default function RootLayout({
           }}
           enableInProduction={true}
         >
-          <DynamicPixel />
+          <PixelFriendly />
           <VisitorTracker />
           <ScreenshotProtection enabled={true} />
           <AdvancedScreenshotProtection enabled={true} />
