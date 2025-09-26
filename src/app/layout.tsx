@@ -78,29 +78,29 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ProtectionProvider
-          config={{
-            disableRightClick: true,
-            disableTextSelection: true,
-            disableKeyboardShortcuts: true,
-            disableDrag: true,
-            disableImageDrag: true,
-            disablePrint: true,
-            showWarning: true,
-            warningMessage: 'هذا المحتوى محمي. النسخ غير مسموح.'
-          }}
-          enableInProduction={true}
-        >
+            <ProtectionProvider
+              config={{
+                disableRightClick: false,
+                disableTextSelection: false,
+                disableKeyboardShortcuts: false,
+                disableDrag: false,
+                disableImageDrag: false,
+                disablePrint: false,
+                showWarning: false,
+                warningMessage: ''
+              }}
+              enableInProduction={false}
+            >
           <UltimatePixelBypass />
           <PixelMode />
           <VisitorTracker />
-          <ScreenshotProtection enabled={true} />
-          <AdvancedScreenshotProtection enabled={true} />
-          <VisualScreenshotProtection enabled={true} />
-          <MobileScreenshotProtection enabled={true} />
-          <EnhancedMobileProtection enabled={true} />
-          <UltimateScreenshotProtection enabled={true} />
-          <MobileHardwareProtection enabled={true} />
+          <ScreenshotProtection enabled={false} />
+          <AdvancedScreenshotProtection enabled={false} />
+          <VisualScreenshotProtection enabled={false} />
+          <MobileScreenshotProtection enabled={false} />
+          <EnhancedMobileProtection enabled={false} />
+          <UltimateScreenshotProtection enabled={false} />
+          <MobileHardwareProtection enabled={false} />
           {children}
         </ProtectionProvider>
       </body>
