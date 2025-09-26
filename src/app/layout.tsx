@@ -12,6 +12,7 @@ import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtect
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
 import UltimatePixelBypass from "@/components/UltimatePixelBypass";
 import PixelMode from "@/components/PixelMode";
+import DeveloperToolsProtection from "@/components/DeveloperToolsProtection";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -123,19 +124,20 @@ export default function RootLayout({
       >
             <ProtectionProvider
               config={{
-                disableRightClick: false,
-                disableTextSelection: false,
-                disableKeyboardShortcuts: false,
-                disableDrag: false,
-                disableImageDrag: false,
-                disablePrint: false,
-                showWarning: false,
-                warningMessage: ''
+                disableRightClick: true,
+                disableTextSelection: true,
+                disableKeyboardShortcuts: true,
+                disableDrag: true,
+                disableImageDrag: true,
+                disablePrint: true,
+                showWarning: true,
+                warningMessage: 'هذا المحتوى محمي. النسخ غير مسموح.'
               }}
-              enableInProduction={false}
+              enableInProduction={true}
             >
           <UltimatePixelBypass />
           <PixelMode />
+          <DeveloperToolsProtection />
           <VisitorTracker />
           <ScreenshotProtection enabled={false} />
           <AdvancedScreenshotProtection enabled={false} />
