@@ -10,6 +10,7 @@ import '@/lib/testGoogleSheets' // Load test function
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import ThankYouPage from '@/components/ThankYouPage'
+import PixelDebugger from '@/components/PixelDebugger'
 
 interface FormData {
   name: string
@@ -1944,6 +1945,11 @@ export default function Home() {
             </div>
           </button>
         </div>
+      )}
+
+      {/* Pixel Debugger - Only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <PixelDebugger isEnabled={true} />
       )}
 
     </div>

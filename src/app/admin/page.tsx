@@ -145,7 +145,7 @@ export default function AdminDashboard() {
     const isAuth = sessionStorage.getItem('admin_authenticated');
     if (isAuth === 'true') {
       setIsAuthenticated(true);
-      fetchData();
+    fetchData();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -351,7 +351,7 @@ export default function AdminDashboard() {
         {/* Tab Content */}
         <div className="space-y-8">
           {activeTab === 'overview' && visitorStats && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Hourly Visitors Chart */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Hourly Visitors Today</h3>
@@ -421,7 +421,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+                      </div>
           )}
 
           {activeTab === 'pages' && visitorStats && (
@@ -448,7 +448,7 @@ export default function AdminDashboard() {
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
-              </div>
+                    </div>
 
               {/* Top Pages Table */}
               <div className="bg-white rounded-lg shadow p-6">
@@ -497,7 +497,7 @@ export default function AdminDashboard() {
                     <Bar dataKey="clicks" fill="#ff7300" />
                   </BarChart>
                 </ResponsiveContainer>
-              </div>
+          </div>
 
               {/* Click Details Table */}
               <div className="bg-white rounded-lg shadow p-6">
@@ -604,10 +604,10 @@ export default function AdminDashboard() {
                     <div className="text-gray-400 text-6xl mb-4">🌐</div>
                     <p className="text-gray-600">Browser analytics coming soon</p>
                     <p className="text-sm text-gray-500 mt-2">We'll track Chrome, Firefox, Safari, and more</p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
+          </div>
           )}
         </div>
 
