@@ -290,10 +290,10 @@ export const rateLimitConfigs = {
     skipFailedRequests: false,
   },
 
-  // Order-specific rate limit (2 orders per day per IP)
+  // Order-specific rate limit (10 orders per hour per IP - more reasonable)
   orders: {
-    windowMs: 24 * 60 * 60 * 1000, // 24 hours
-    maxRequests: 2,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    maxRequests: 10,
     skipSuccessfulRequests: false,
     skipFailedRequests: false,
     onLimitReached: (req: NextRequest, key: string) => {
