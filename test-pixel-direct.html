@@ -3,234 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Direct Pixel Test - bidayagift.shop</title>
+    <title>Direct Pixel Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .status {
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-        .success { background-color: #d4edda; color: #155724; }
-        .error { background-color: #f8d7da; color: #721c24; }
-        .warning { background-color: #fff3cd; color: #856404; }
-        .info { background-color: #d1ecf1; color: #0c5460; }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover { background-color: #0056b3; }
-        pre {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎯 Direct Meta Pixel Test</h1>
-        <p>This is a direct test of Meta Pixel without any React or Next.js complications.</p>
-        
-        <div id="status" class="status info">
-            <strong>Status:</strong> Loading...
-        </div>
-        
-        <div>
-            <button onclick="testPixel()">Test Pixel Status</button>
-            <button onclick="sendTestEvent()">Send Test Event (TEST93223)</button>
-            <button onclick="checkNetworkRequests()">Check Network Requests</button>
-        </div>
+    <h1>🎯 Direct Meta Pixel Test</h1>
+    <p>This page tests the Meta Pixel directly without any protection systems.</p>
+    
+    <div id="status" class="status info">⏳ Loading...</div>
+    
+    <div>
+        <button onclick="testPixel()">Test Pixel</button>
+        <button onclick="sendTestEvent()">Send Test Event (TEST93223)</button>
+        <button onclick="sendPurchaseEvent()">Send Purchase Event</button>
+        <button onclick="clearLog()">Clear Log</button>
     </div>
+    
+    <div id="log" class="log"></div>
 
-    <div class="container">
-        <h2>📊 Pixel Information</h2>
-        <div id="pixelInfo">
-            <p><strong>Pixel ID:</strong> 24528287270184892</p>
-            <p><strong>Pixel Available:</strong> <span id="pixelAvailable">Checking...</span></p>
-            <p><strong>Script Loaded:</strong> <span id="scriptLoaded">Checking...</span></p>
-            <p><strong>Network Requests:</strong> <span id="networkRequests">0</span></p>
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>🔍 Debug Information</h2>
-        <div id="debugInfo">
-            <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
-            <p><strong>URL:</strong> <span id="currentUrl"></span></p>
-            <p><strong>Timestamp:</strong> <span id="timestamp"></span></p>
-        </div>
-    </div>
-
-    <div class="container">
-        <h2>📝 Console Log</h2>
-        <div id="consoleLog" style="background-color: #f8f9fa; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
-            <p>Console output will appear here...</p>
-        </div>
-    </div>
-
-    <!-- Meta Pixel Code - Direct Implementation -->
     <script>
-        // Override console.log to capture output
-        const originalLog = console.log;
-        const originalError = console.error;
-        const logDiv = document.getElementById('consoleLog');
-        
-        function addToLog(message, type = 'log') {
+        const PIXEL_ID = '24528287270184892';
+        const TEST_CODE = 'TEST93223';
+        let pixelLoaded = false;
+        let logElement = document.getElementById('log');
+        let statusElement = document.getElementById('status');
+
+        function log(message) {
             const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.style.color = type === 'error' ? 'red' : 'black';
-            logEntry.innerHTML = `[${timestamp}] ${message}`;
-            logDiv.appendChild(logEntry);
-            logDiv.scrollTop = logDiv.scrollHeight;
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
         }
-        
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            addToLog(args.join(' '), 'log');
-        };
-        
-        console.error = function(...args) {
-            originalError.apply(console, args);
-            addToLog(args.join(' '), 'error');
-        };
 
-        // Facebook's official pixel code
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '24528287270184892');
-        fbq('track', 'PageView');
-        
-        console.log('✅ Meta Pixel code executed');
-    </script>
-    <noscript>
-        <img height="1" width="1" style="display:none" 
-             src="https://www.facebook.com/tr?id=24528287270184892&ev=PageView&noscript=1" alt=""/>
-    </noscript>
-
-    <script>
-        let networkRequestCount = 0;
-        
-        // Monitor network requests
-        const originalFetch = window.fetch;
-        window.fetch = function(...args) {
-            networkRequestCount++;
-            document.getElementById('networkRequests').textContent = networkRequestCount;
-            console.log('🌐 Network request:', args[0]);
-            return originalFetch.apply(this, args);
-        };
-        
         function updateStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status');
-            statusDiv.className = `status ${type}`;
-            statusDiv.innerHTML = `<strong>Status:</strong> ${message}`;
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
         }
-        
-        function testPixel() {
-            console.log('🔍 Testing Meta Pixel...');
-            
-            // Check if pixel is available
-            if (typeof window.fbq !== 'undefined') {
-                document.getElementById('pixelAvailable').textContent = '✅ Yes';
-                console.log('✅ Meta Pixel is available');
-                
-                // Check if script is loaded
-                const scripts = document.querySelectorAll('script[src*="fbevents.js"]');
-                if (scripts.length > 0) {
-                    document.getElementById('scriptLoaded').textContent = '✅ Yes';
-                    console.log('✅ Facebook Pixel script is loaded');
-                } else {
-                    document.getElementById('scriptLoaded').textContent = '❌ No';
-                    console.log('❌ Facebook Pixel script not found');
-                }
-                
-                updateStatus('Pixel is working correctly', 'success');
-            } else {
-                document.getElementById('pixelAvailable').textContent = '❌ No';
-                document.getElementById('scriptLoaded').textContent = '❌ No';
-                console.log('❌ Meta Pixel is not available');
-                updateStatus('Pixel is not working', 'error');
-            }
+
+        function clearLog() {
+            logElement.textContent = '';
         }
-        
-        function sendTestEvent() {
-            if (typeof window.fbq === 'undefined') {
-                console.log('❌ Cannot send test event - Meta Pixel not available');
-                return;
-            }
-            
+
+        // Load Facebook Pixel
+        function loadPixel() {
             try {
-                window.fbq('track', 'PageView', {
-                    test_event_code: 'TEST93223'
-                });
-                console.log('✅ Test PageView event sent with TEST93223');
+                log('🔧 Loading Facebook Pixel...');
                 
-                // Also try a Purchase event
-                window.fbq('track', 'Purchase', {
-                    value: 5000,
-                    currency: 'DZD',
-                    content_name: 'كرة الموجات فوق الصوتية',
-                    content_category: 'هدايا',
-                    content_ids: ['ultrasound-orb'],
-                    num_items: 1,
-                    order_id: `test_order_${Date.now()}`,
-                    test_event_code: 'TEST93223'
-                });
-                console.log('✅ Test Purchase event sent with TEST93223');
+                // Facebook's official pixel code
+                !function(f,b,e,v,n,t,s)
+                {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window, document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                
+                // Initialize pixel
+                fbq('init', PIXEL_ID);
+                fbq('track', 'PageView');
+                
+                pixelLoaded = true;
+                updateStatus('✅ Pixel loaded successfully!', 'success');
+                log('✅ Pixel initialized with ID: ' + PIXEL_ID);
+                log('✅ PageView event sent');
                 
             } catch (error) {
-                console.log(`❌ Failed to send test event: ${error.message}`);
+                updateStatus('❌ Pixel failed to load: ' + error.message, 'error');
+                log('❌ Pixel error: ' + error.message);
             }
         }
-        
-        function checkNetworkRequests() {
-            console.log('🌐 Checking network requests...');
-            console.log(`Total network requests: ${networkRequestCount}`);
-            
-            // Check for Facebook requests
-            const scripts = document.querySelectorAll('script[src*="facebook"]');
-            console.log(`Facebook scripts found: ${scripts.length}`);
-            
-            const images = document.querySelectorAll('img[src*="facebook"]');
-            console.log(`Facebook images found: ${images.length}`);
+
+        function testPixel() {
+            if (typeof fbq !== 'undefined') {
+                log('✅ Pixel is working - fbq function available');
+                updateStatus('✅ Pixel is working!', 'success');
+            } else {
+                log('❌ Pixel is not working - fbq function not available');
+                updateStatus('❌ Pixel is not working!', 'error');
+            }
         }
-        
-        // Initialize debug info
-        document.getElementById('userAgent').textContent = navigator.userAgent;
-        document.getElementById('currentUrl').textContent = window.location.href;
-        document.getElementById('timestamp').textContent = new Date().toISOString();
-        
-        // Auto-test on page load
+
+        function sendTestEvent() {
+            if (typeof fbq !== 'undefined') {
+                try {
+                    fbq('track', 'PageView', {
+                        test_event_code: TEST_CODE
+                    });
+                    log('✅ Test event sent with code: ' + TEST_CODE);
+                    updateStatus('✅ Test event sent!', 'success');
+                } catch (error) {
+                    log('❌ Failed to send test event: ' + error.message);
+                    updateStatus('❌ Test event failed!', 'error');
+                }
+            } else {
+                log('❌ Cannot send test event - pixel not loaded');
+                updateStatus('❌ Pixel not loaded!', 'error');
+            }
+        }
+
+        function sendPurchaseEvent() {
+            if (typeof fbq !== 'undefined') {
+                try {
+                    fbq('track', 'Purchase', {
+                        value: 5000,
+                        currency: 'DZD',
+                        content_name: 'كرة الموجات فوق الصوتية',
+                        content_category: 'هدايا',
+                        content_ids: ['ultrasound-orb'],
+                        num_items: 1,
+                        order_id: `test_order_${Date.now()}`,
+                        test_event_code: TEST_CODE
+                    });
+                    log('✅ Purchase event sent with code: ' + TEST_CODE);
+                    updateStatus('✅ Purchase event sent!', 'success');
+                } catch (error) {
+                    log('❌ Failed to send purchase event: ' + error.message);
+                    updateStatus('❌ Purchase event failed!', 'error');
+                }
+            } else {
+                log('❌ Cannot send purchase event - pixel not loaded');
+                updateStatus('❌ Pixel not loaded!', 'error');
+            }
+        }
+
+        // Load pixel when page loads
         window.addEventListener('load', function() {
-            setTimeout(testPixel, 2000);
+            setTimeout(loadPixel, 1000); // Small delay to ensure page is ready
         });
-        
-        console.log('🚀 Direct pixel test page loaded');
+
+        // Also try to load immediately
+        loadPixel();
     </script>
+
+    <!-- Noscript fallback -->
+    <noscript>
+        <img height="1" width="1" style="display:none" 
+             src="https://www.facebook.com/tr?id=24528287270184892&ev=PageView&noscript=1" 
+             alt="" />
+    </noscript>
 </body>
 </html>
