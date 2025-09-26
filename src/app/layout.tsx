@@ -37,34 +37,77 @@ export default function RootLayout({
     <html lang="ar" dir="rtl">
       <head>
         {/* Meta Pixel Code - Bypass Protection */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Load pixel BEFORE any protection systems
-              (function() {
-                try {
-                  // Facebook's official pixel code
-                  !function(f,b,e,v,n,t,s)
-                  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-                  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                  n.queue=[];t=b.createElement(e);t.async=!0;
-                  t.src=v;s=b.getElementsByTagName(e)[0];
-                  s.parentNode.insertBefore(t,s)}(window, document,'script',
-                  'https://connect.facebook.net/en_US/fbevents.js');
-                  
-                  // Initialize immediately
-                  fbq('init', '24528287270184892');
-                  fbq('track', 'PageView');
-                  
-                  console.log('✅ Meta Pixel loaded BEFORE protection systems');
-                } catch (error) {
-                  console.error('❌ Meta Pixel failed:', error);
-                }
-              })();
-            `,
-          }}
-        />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  // FORCE LOAD PIXEL - BYPASS ALL BLOCKING
+                  (function() {
+                    try {
+                      console.log('🚀 Starting FORCE pixel load...');
+                      
+                      // Method 1: Direct script injection
+                      var script = document.createElement('script');
+                      script.type = 'text/javascript';
+                      script.async = false;
+                      script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+                      script.onload = function() {
+                        console.log('✅ Facebook script loaded successfully');
+                        
+                        // Initialize pixel immediately
+                        if (typeof fbq !== 'undefined') {
+                          fbq('init', '24528287270184892');
+                          fbq('track', 'PageView');
+                          console.log('✅ Pixel initialized and PageView sent');
+                        } else {
+                          console.error('❌ fbq function not available after script load');
+                        }
+                      };
+                      script.onerror = function() {
+                        console.error('❌ Failed to load Facebook script');
+                        
+                        // Method 2: Try alternative loading
+                        setTimeout(function() {
+                          var script2 = document.createElement('script');
+                          script2.type = 'text/javascript';
+                          script2.async = true;
+                          script2.src = 'https://connect.facebook.net/en_US/fbevents.js';
+                          document.head.appendChild(script2);
+                        }, 1000);
+                      };
+                      
+                      document.head.appendChild(script);
+                      
+                      // Method 3: Facebook's official pixel code as backup
+                      setTimeout(function() {
+                        if (typeof fbq === 'undefined') {
+                          console.log('🔄 Trying Facebook official pixel code...');
+                          !function(f,b,e,v,n,t,s)
+                          {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                          n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                          if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                          n.queue=[];t=b.createElement(e);t.async=!0;
+                          t.src=v;s=b.getElementsByTagName(e)[0];
+                          s.parentNode.insertBefore(t,s)}(window, document,'script',
+                          'https://connect.facebook.net/en_US/fbevents.js');
+                          
+                          // Initialize after a delay
+                          setTimeout(function() {
+                            if (typeof fbq !== 'undefined') {
+                              fbq('init', '24528287270184892');
+                              fbq('track', 'PageView');
+                              console.log('✅ Pixel initialized via backup method');
+                            }
+                          }, 2000);
+                        }
+                      }, 3000);
+                      
+                    } catch (error) {
+                      console.error('❌ Pixel setup failed:', error);
+                    }
+                  })();
+                `,
+              }}
+            />
         <noscript>
           <img
             height="1"
