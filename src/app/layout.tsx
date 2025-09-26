@@ -10,7 +10,8 @@ import MobileScreenshotProtection from "@/components/MobileScreenshotProtection"
 import EnhancedMobileProtection from "@/components/EnhancedMobileProtection";
 import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtection";
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
-import PixelFriendly from "@/components/PixelFriendly";
+import UltimatePixelBypass from "@/components/UltimatePixelBypass";
+import PixelMode from "@/components/PixelMode";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -90,7 +91,8 @@ export default function RootLayout({
           }}
           enableInProduction={true}
         >
-          <PixelFriendly />
+          <UltimatePixelBypass />
+          <PixelMode />
           <VisitorTracker />
           <ScreenshotProtection enabled={true} />
           <AdvancedScreenshotProtection enabled={true} />
