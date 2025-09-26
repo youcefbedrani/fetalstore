@@ -10,7 +10,7 @@ import MobileScreenshotProtection from "@/components/MobileScreenshotProtection"
 import EnhancedMobileProtection from "@/components/EnhancedMobileProtection";
 import UltimateScreenshotProtection from "@/components/UltimateScreenshotProtection";
 import MobileHardwareProtection from "@/components/MobileHardwareProtection";
-import SimpleMetaPixel from "@/components/SimpleMetaPixel";
+import DynamicPixel from "@/components/DynamicPixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,10 +35,11 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <head>
-        {/* Meta Pixel Code - Facebook Official Implementation */}
+        {/* Meta Pixel Code - Dynamic Implementation */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Meta Pixel Base Code
               !function(f,b,e,v,n,t,s)
               {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
               n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -47,8 +48,23 @@ export default function RootLayout({
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '24528287270184892');
-              fbq('track', 'PageView');
+              
+              // Initialize pixel with error handling
+              (function() {
+                try {
+                  fbq('init', '24528287270184892');
+                  console.log('✅ Meta Pixel initialized in head');
+                  
+                  // Track PageView with delay
+                  setTimeout(function() {
+                    fbq('track', 'PageView');
+                    console.log('✅ Meta Pixel PageView tracked in head');
+                  }, 500);
+                  
+                } catch (error) {
+                  console.error('❌ Meta Pixel initialization failed in head:', error);
+                }
+              })();
             `,
           }}
         />
@@ -78,7 +94,7 @@ export default function RootLayout({
           }}
           enableInProduction={true}
         >
-          <SimpleMetaPixel />
+          <DynamicPixel />
           <VisitorTracker />
           <ScreenshotProtection enabled={true} />
           <AdvancedScreenshotProtection enabled={true} />
